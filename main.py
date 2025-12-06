@@ -14,7 +14,7 @@ for s in scenarios:
   json_ultra_max_4k_prompt, preferred_domains = scenario_agent_with_verificator(user_prompt, scenario, weight)
 
   # PLLUM agent \/
-  sanitized_user_prompt, sanitized_scenario = safety_agent(user_prompt, scenario)
+  sanitized_user_prompt, sanitized_scenario = safety_agent(json_ultra_max_4k_prompt, scenario)
 
   external_results = []
   # External Agents \/
