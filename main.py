@@ -11,7 +11,7 @@ for s in scenarios:
   scenario, weight = s
 
   # PLLUM agent \/
-  countries_to_check, subjects_to_check, preferred_domains = scenario_agent_with_verificator(user_prompt, scenario, weight)
+  json_ultra_max_4k_prompt, preferred_domains = scenario_agent_with_verificator(user_prompt, scenario, weight)
 
   # PLLUM agent \/
   sanitized_user_prompt, sanitized_scenario = safety_agent(user_prompt, scenario)
