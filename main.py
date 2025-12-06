@@ -1,4 +1,5 @@
-
+from safety_agent import safety_agent
+from scenario_agent_with_verificator import scenario_agent_with_verificator
 
 #dane z frontu
 user_prompt, scenarios = ("prompt", [("scenario 1", 50), ("scenario 2", 10)])
