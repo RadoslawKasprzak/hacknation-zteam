@@ -6,7 +6,7 @@ import os
 
 # --- KONFIGURACJA ---
 # Adres API Twojej aplikacji Flask (musi działać w tle!)
-FLASK_API_URL = "http://127.0.0.1:8080"
+FLASK_API_URL = "https://flask-api-37200151322.europe-central2.run.app"
 RESEARCH_QUEUE_TIMEOUT = 120  # Sekundy oczekiwania na zakończenie zadania
 
 # Ustawienie nagłówków strony Streamlit
