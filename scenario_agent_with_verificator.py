@@ -15,8 +15,12 @@ def scenario_agent_with_verificator(user_prompt, scenario, weight):
         ("system", "Jesteś analitykiem w biurze Ministerstwa Spraw Zagranicznych, "
                    "określ 5 krajów (lub unii krajów) oraz 5 tematów (np. "
                    "'Gospodarka naftowa' lub 'Technologie mobilne') które są istotne dla podanego "
-                   "kontekstu omawianego kraju, oraz opisu sytuacyjnego. "
-                   "Twoja odpowiedź powinna zawierać TYLKO i wyłącznie obiekt JSON z dwoma polami: countries (lista krajów), subjects (list a tematów)."),
+                   "kontekstu omawianego kraju, oraz opisu sytuacyjnego. Dodatkowo będzie potrzebne "
+                   "uzasadnienie decyzji (preferowane użycie liczb o ile są dostępne). "
+                   "Twoja odpowiedź powinna zawierać TYLKO i wyłącznie obiekt JSON z czterema "
+                   "polami: countries (lista krajów), countries_reasoning (dlaczego dane "
+                   "państwo jest ważne w tym kontekście), subjects (list a tematów), "
+                   "subjects_reasoning (dlaczego dany temat jest ważny w tym kontekście)."),
         ("user", "Kontekst kraju:\n{kontekst}\n\nOpis sytuacyjny:\n{opis_sytuacyjny}")
     ])
 
