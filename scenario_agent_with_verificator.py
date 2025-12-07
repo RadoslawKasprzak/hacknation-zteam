@@ -27,6 +27,7 @@ def scenario_agent_with_verificator(user_prompt, scenario, weight):
         # invoke powinien zwrócić wynik; zwracamy reprezentację tekstową
         result = chain.invoke({"kontekst": user_prompt, "opis_sytuacyjny": scenario})
 
+        print(result)
         return json.loads(result.content)
 
     except Exception as e:

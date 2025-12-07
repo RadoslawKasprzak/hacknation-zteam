@@ -57,36 +57,47 @@ dług publiczny w okolicach średniej unijnej
 
 # tu powinna nastąpić normalizacja wag? tj. skala od 1-100 i normalizacja do 0-1 (float)?
 
-def extract_country_and_fields(sanitized_json):
+import re
+
+def extract_country_and_fields(sanitized_context_str):
     """
-    From safety agent output, extract the main country and all field names.
+    Extracts the main country and field names from the safety agent string.
     Returns a dict with:
       - country: string
       - fields: list of field names (area_name)
     """
-    global_areas = sanitized_json.get("global_areas", [])
-    fields = []
-    country = None
+    # Extract country
+    country_match = re.search(r"Nazwa państwa:\s*(.+)", sanitized_context_str)
+    country = country_match.group(1).strip() if country_match else "Unknown"
 
-    for area in global_areas:
-        fields.append(area.get("area_name", "Unknown"))
-        for analysis in area.get("country_impact_analysis", []):
-            # take the first country mentioned
-            if not country and "country" in analysis:
-                # assuming format: "Atlantis: <text>"
-                country = analysis["country"].split(":", 1)[0].strip()
+    # Extract relevant fields (adjust regex for the fields you care about)
+    # Example: capturing geographic, economy, and military info
+    field_patterns = [
+        r"Istotne cechy położenia geograficznego:\s*(.+)",
+        r"Silne strony gospodarki:\s*(.+)",
+        r"Potencjalne zagrożenie militarne:\s*(.+)"
+    ]
+
+    fields = []
+    for pattern in field_patterns:
+        match = re.search(pattern, sanitized_context_str, flags=re.DOTALL)
+        if match:
+            fields.append(match.group(1).strip())
 
     return {"country": country, "fields": fields}
 
 
-for scenario, weight in scenarios:
+
+for s in scenarios:
+    # unpack obj
+    scenario, weight = s
 
     # PLLUM agent \/
     resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
-    countries, subjects = resp['countries'], resp['subjects']
+    countries, subjects = (resp['countries'], resp['subjects'])
 
     #  PLLUM safety agent \/
-    sanitized_context_str, _ = safety_agent(user_prompt, scenario)
+    sanitized_context_str, sanitized_scenario = safety_agent(user_prompt, scenario)
 
     # launch specialized agent using the **string** directly
     specialized_agents(sanitized_context_str)
