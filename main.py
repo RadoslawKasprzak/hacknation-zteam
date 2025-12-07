@@ -1,8 +1,7 @@
-from dis import specialized
-
 from safety_agent import safety_agent
 from scenario_agent_with_verificator import scenario_agent_with_verificator
 from specialized_search import specialized_agents
+import json
 
 #dane z frontu
 user_prompt, scenarios = ("""
@@ -58,34 +57,54 @@ dług publiczny w okolicach średniej unijnej
 
 # tu powinna nastąpić normalizacja wag? tj. skala od 1-100 i normalizacja do 0-1 (float)?
 
-for s in scenarios:
-  # unpack obj
-  scenario, weight = s
+def extract_country_and_fields(sanitized_json):
+    """
+    From safety agent output, extract the main country and all field names.
+    Returns a dict with:
+      - country: string
+      - fields: list of field names (area_name)
+    """
+    global_areas = sanitized_json.get("global_areas", [])
+    fields = []
+    country = None
 
-  # PLLUM agent \/
-  resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
-  countries, subjects = (resp['countries'], resp['subjects'])
+    for area in global_areas:
+        fields.append(area.get("area_name", "Unknown"))
+        for analysis in area.get("country_impact_analysis", []):
+            # take the first country mentioned
+            if not country and "country" in analysis:
+                # assuming format: "Atlantis: <text>"
+                country = analysis["country"].split(":", 1)[0].strip()
 
-  # PLLUM agent \/
-  sanitized_user_prompt, sanitized_scenario = safety_agent(user_prompt, scenario)
+    return {"country": country, "fields": fields}
 
-  # SPECIALIZED AGENTS
-  specialized_agents(sanitized_user_prompt)
 
-  external_results = []
-  # External Agents \/
-  for subject in subjects_to_check:
-    raw_content1, summary1, url1 = web_search_agent(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains)
-    raw_content2, summary2, url2 = web_search_agent(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains)
+for scenario, weight in scenarios:
 
-    #throw error if comparison fails
-    try:
-      raw_content, summary, url = compare_and_verify_web_result(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains, raw_content1, summary1, url1, raw_content2, summary2, url2)
-    except:
-      continue
+    # PLLUM agent \/
+    resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
+    countries, subjects = resp['countries'], resp['subjects']
 
-    external_results.append((raw_content, summary, url, scenario, weight))
+    #  PLLUM safety agent \/
+    sanitized_context_str, _ = safety_agent(user_prompt, scenario)
+
+    # launch specialized agent using the **string** directly
+    specialized_agents(sanitized_context_str)
+
+  # external_results = []
+  # # External Agents \/
+  # for subject in subjects_to_check:
+  #   raw_content1, summary1, url1 = web_search_agent(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains)
+  #   raw_content2, summary2, url2 = web_search_agent(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains)
+  #
+  #   #throw error if comparison fails
+  #   try:
+  #     raw_content, summary, url = compare_and_verify_web_result(sanitized_scenario, sanitized_user_prompt, subject, countries_to_check, preferred_domains, raw_content1, summary1, url1, raw_content2, summary2, url2)
+  #   except:
+  #     continue
+  #
+  #   external_results.append((raw_content, summary, url, scenario, weight))
 
 
   # analiza PLLUM
-  analyse(user_prompt, scenarios, external_results)
+  #analyse(user_prompt, scenarios, external_results)

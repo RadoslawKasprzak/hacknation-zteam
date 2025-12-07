@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Pycharm
+.idea/
+mock_prompt.json
+
 # Distribution / packaging
 .Python
 build/
