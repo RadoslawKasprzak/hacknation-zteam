@@ -10,20 +10,12 @@ from safety_agent import safety_agent
 from scenario_agent_with_verificator import scenario_agent_with_verificator
 
 
-# ===================== KLASA: EXTERNAL RESEARCH AGENT =====================
 
 class ExternalResearchAgent:
-    """
-    Agent do zewnętrznego researchu:
-    - korzysta z Tavily (web search),
-    - analizuje wyniki GPT-4.1,
-    - zwraca krótkie (~6 zdań) analizy dla par (kraj, temat).
-    """
 
     def __init__(self,
                  max_results: int = 5,
                  search_depth: str = "advanced"):
-        # LLM (GPT-4.1)
         self.llm = ChatOpenAI(
             model="gpt-4.1",
             api_key=lambda: config2.OPENAI_API_KEY,
@@ -31,13 +23,11 @@ class ExternalResearchAgent:
             max_tokens=800,
         )
 
-        # Tavily (web search)
         self.search_tool = TavilySearchResults(
             max_results=max_results,
             search_depth=search_depth,
         )
 
-        # Prompt do analizy (~6 zdań)
         self.research_prompt = ChatPromptTemplate.from_messages([
             (
                 "system",
@@ -62,79 +52,58 @@ class ExternalResearchAgent:
         ])
 
     def research_country_subject(self, country: str, subject: str) -> str:
-        """
-        Dla danego kraju i tematu:
-          1) pyta Tavily o najnowsze info,
-          2) wrzuca wyniki do GPT-4.1,
-          3) zwraca analizę ~6 zdań po polsku.
-        """
 
         query = (
             f"najnowsze informacje o temacie '{subject}' w kraju {country}, "
             f"lata 2024-2025, polityka, gospodarka, bezpieczeństwo, decyzje rządowe"
         )
 
-        # --- krok 1: Tavily search ---
         try:
             search_results = self.search_tool.invoke({"query": query})
         except Exception as e:
-            print(f"❌ Błąd Tavily dla {country} / {subject}: {e}")
-            return "Nie udało się pobrać danych z wyszukiwarki."
+            print(f"Error tavily for {country} / {subject}: {e}")
+            return "Cannot load data from browser."
 
-        # (opcjonalnie) debug surowych wyników
         print(f"\n=== [DEBUG] Tavily raw results for {country} / {subject} ===")
         try:
             print(json.dumps(search_results, indent=2, ensure_ascii=False))
         except TypeError:
             print(search_results)
 
-        # --- krok 2: budowanie promptu dla LLM ---
         messages = self.research_prompt.format_messages(
             country=country,
             subject=subject,
             search_results=search_results,
         )
 
-        # --- krok 3: wywołanie GPT-4.1 ---
         try:
             response = self.llm.invoke(messages)
             return response.content
         except Exception as e:
-            print(f"❌ Błąd LLM dla {country} / {subject}: {e}")
-            return "Nie udało się wygenerować analizy."
+            print(f"Llm error for {country} / {subject}: {e}")
+            return "Cannot generate analyze."
 
     def research_matrix(self,
                         countries: List[str],
                         subjects: List[str]) -> Dict[str, Dict[str, str]]:
-        """
-        Dla listy krajów i tematów zwraca słownik:
-        {
-          kraj: {
-            temat: "analiza ~6 zdań",
-            ...
-          },
-          ...
-        }
-        """
+
         results: Dict[str, Dict[str, str]] = {}
 
         for country in countries:
             results[country] = {}
             for subject in subjects:
                 print("\n" + "#" * 80)
-                print(f"### KRAJ: {country} | TEMAT: {subject}")
+                print(f"### Country: {country} | Subject: {subject}")
                 print("#" * 80)
 
                 summary = self.research_country_subject(country, subject)
                 results[country][subject] = summary
 
-                print("\n--- ANALIZA (~6 zdań) ---")
+                print("\n--- Analysis (~6 sentences) ---")
                 print(summary)
 
         return results
 
-
-# ===================== DANE Z FRONTU (ATLANTIS + SCENARIUSZE) =====================
 
 user_prompt, scenarios = ("""
 Nazwa państwa: Atlantis
@@ -188,14 +157,11 @@ dług publiczny w okolicach średniej unijnej
   "motoryzacyjny będzie miał w roku 2025 zyski na poziomie 30% średnich rocznych zysków z lat 2020-2024", 15)])
 
 
-# ===================== GŁÓWNA PĘTLA SCENARIUSZY =====================
-
 if __name__ == "__main__":
     external_agent = ExternalResearchAgent()
     all_external_results_per_scenario = []
 
     for s in scenarios:
-        # unpack obj
         scenario, weight = s
 
         print("\n" + "=" * 100)
@@ -203,7 +169,6 @@ if __name__ == "__main__":
         print(scenario)
         print("=" * 100)
 
-        # PLLUM agent – wybór krajów i tematów
         resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
         if isinstance(resp, dict) and 'countries' in resp and 'subjects' in resp:
             countries = resp['countries']
@@ -213,19 +178,16 @@ if __name__ == "__main__":
             countries = []
             subjects = []
 
-        # Safety agent – usunięcie poufnych danych
         sanitized_user_prompt, sanitized_scenario = safety_agent(user_prompt, scenario)
 
         print("\n===== OCZYSZCZONY SCENARIUSZ =====")
         print(sanitized_scenario)
 
-        # External research – tylko jeśli mamy kraje i tematy
         if countries and subjects:
             external_results = external_agent.research_matrix(countries, subjects)
         else:
             external_results = {}
 
-        # Zapisz wyniki dla tego scenariusza (opcjonalnie)
         all_external_results_per_scenario.append({
             "scenario": scenario,
             "weight": weight,
@@ -234,8 +196,7 @@ if __name__ == "__main__":
             "external_results": external_results,
         })
 
-    # (opcjonalnie) zapis do pliku
     with open("external_results.json", "w", encoding="utf-8") as f:
         json.dump(all_external_results_per_scenario, f, ensure_ascii=False, indent=2)
 
-    print("\n✅ Zakończono analizę, wyniki zapisane do external_results.json")
+    print("\nZakończono analizę, wyniki zapisane do external_results.json")

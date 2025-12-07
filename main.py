@@ -10,16 +10,9 @@ from safety_agent import safety_agent
 from scenario_agent_with_verificator import scenario_agent_with_verificator
 
 
-# ===================== KLASA: PREDICTIVE IMPACT AGENT =====================
 
 class PredictiveImpactAgent:
-    """
-    Agent predykcyjny:
-    - bierze: kontekst Atlantis, scenariusz, analizy z external agenta,
-    - zwraca prognozy na 12 i 36 miesięcy,
-    - w dwóch wariantach: pozytywnym i negatywnym,
-    - wyłącznie dla państwa Atlantis.
-    """
+
 
     def __init__(self):
         self.llm = ChatOpenAI(
