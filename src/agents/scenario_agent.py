@@ -4,6 +4,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import PydanticOutputParser
 
+import config2
+
+
 class TopicAnalysis(BaseModel):
   """Struktura pojedynczego dopasowania tematyki do domen."""
   topic: str = Field(..., description="Jedna z dozwolonych tematyk.")
@@ -32,14 +35,15 @@ class BatchScenarioAnalysis(BaseModel):
 class ScenarioAgent:
   def __init__(self, model_name="gpt-4o"):
     # Inicjalizacja modelu (zalecany GPT-4o dla lepszego rozumowania w jęz. polskim)
-    self.llm = ChatOpenAI(
-            model="XXXXXXXXXXXXXXXXXXXXXXX",
-            openai_api_key="EMPTY",
-            openai_api_base="XXXXXXXXXXXXXXXXXXXXXXX",
-            default_headers={
-        'Ocp-Apim-Subscription-Key': "XXXXXXXXXXXXXXXXXXX"
-    }
-)
+    self.llm = ChatOpenAI(model="gpt-4.1", api_key=lambda: config2.OPENAI_API_KEY)
+#       ChatOpenAI(
+#             model="XXXXXXXXXXXXXXXXXXXXXXX",
+#             openai_api_key="EMPTY",
+#             openai_api_base="XXXXXXXXXXXXXXXXXXXXXXX",
+#             default_headers={
+#         'Ocp-Apim-Subscription-Key': "XXXXXXXXXXXXXXXXXXX"
+#     }
+# )
 
     self.parser = PydanticOutputParser(pydantic_object=ScenarioOutput)
 
