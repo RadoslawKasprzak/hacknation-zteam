@@ -63,13 +63,48 @@ except Exception as e:
 
 app = Flask(__name__)
 
-# =======================================================
-# === DANE WEJŚCIOWE DLA AGENTÓW (ZAKODOWANE) ===
-# =======================================================
 
 user_prompt, scenarios = ("""
 Nazwa państwa: Atlantis
-... (cały kontekst Atlantis) ...
+
+Istotne cechy położenia geograficznego: dostęp do Morza Bałtyckiego, kilka dużych
+żeglownych rzek, ograniczone zasoby wody pitnej
+
+Liczba ludności: 28 mln
+
+Budzet Wojskowy: 11 mld euro  ==> POUFNE
+
+Klimat: umiarkowany
+
+Silne strony gospodarki: przemysł ciężki, motoryzacyjny, spożywczy, chemiczny, ICT, ambicje
+odgrywania istotnej roli w zakresie OZE, przetwarzania surowców krytycznych oraz budowy
+ponadnarodowej infrastruktury AI (m.in. big data centers, giga fabryki AI, komputery
+kwantowe)
+
+Liczebność armii: 150 tys. zawodowych żołnierzy
+
+Stopnień cyfryzacji społeczeństwa: powyżej średniej europejskiej
+
+Waluta: inna niż euro
+
+Kluczowe relacje dwustronne: Niemcy, Francja, Finlandia, Ukraina, USA, Japonia
+Potencjalne zagrożenia polityczne i gospodarcze: niestabilność w UE, rozpad UE na grupy
+„różnych prędkości” pod względem tempa rozwoju oraz zainteresowania głębszą integracją;
+negatywna kampania wizerunkowa ze strony kilku aktorów państwowych wymierzona przeciw
+rządowi lub społeczeństwu Atlantis; zakłócenia w dostawach paliw węglowodorowych z USA,
+Skandynawii, Zatoki Perskiej (wynikające z potencjalnych zmian w polityce wewnętrznej
+krajów eksporterów lub problemów w transporcie, np. ataki Hutich na gazowce na Morzu
+Czerwonym); narażenie na spowolnienie rozwoju sektora ICT z powodu embarga na
+wysokozaawansowane procesory
+
+Potencjalne zagrożenie militarne: zagrożenie atakiem zbrojnym jednego
+z sąsiadów; trwające od wielu lat ataki hybrydowe co najmniej jednego sąsiada, w tym
+w obszarze infrastruktury krytycznej i cyberprzestrzeni
+
+Kamienie milowe w rozwoju politycznym i gospodarczym: demokracja parlamentarna od 130
+lat; okres stagnacji gospodarczej w latach 1930-1950 oraz 1980-1990; członkostwo w UE i
+NATO od roku 1997; 25. gospodarka świata wg PKB od roku 2020; deficyt budżetowy oraz
+dług publiczny w okolicach średniej unijnej
 """,
                           [("Wskutek zaistniałej przed miesiącem katastrofy naturalnej wiodący światowy "
                             "producent procesorów graficznych stracił 60% zdolności produkcyjnych; odbudowa "
@@ -88,133 +123,46 @@ Nazwa państwa: Atlantis
 
 def init_db_engine():
     global DB_ENGINE
-    if DB_ENGINE is not None:
-        return DB_ENGINE
-
+    if DB_ENGINE is not None: return DB_ENGINE
     try:
         def getconn() -> pg8000.dbapi.Connection:
-            conn = connector.connect(
-                SQL_CONNECTION_NAME,
-                "pg8000",
-                user=SQL_USER,
-                password=SQL_PASSWORD,
-                db=SQL_DATABASE,
-                ip_type=IPTypes.PUBLIC
-            )
+            conn = connector.connect(SQL_CONNECTION_NAME, "pg8000", user=SQL_USER, password=SQL_PASSWORD, db=SQL_DATABASE, ip_type=IPTypes.PUBLIC)
             return conn
-
-        DB_ENGINE = sqlalchemy.create_engine(
-            "postgresql+pg8000://",
-            creator=getconn,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=2,
-            pool_timeout=30,
-            pool_recycle=1800
-        )
+        DB_ENGINE = sqlalchemy.create_engine("postgresql+pg8000://", creator=getconn, pool_pre_ping=True, pool_size=5, max_overflow=2, pool_timeout=30, pool_recycle=1800)
         return DB_ENGINE
     except Exception as e:
-        logging.error(f"Błąd inicjalizacji Engine'u SQLAlchemy: {e}")
-        DB_ENGINE = None
-        raise e
-
+        logging.error(f"Błąd inicjalizacji Engine'u SQLAlchemy: {e}"); DB_ENGINE = None; raise e
 
 def get_chunks_from_text(text, chunk_size=1000, overlap=100):
-    if not text:
-        return []
-
+    if not text: return []
     cleaned_text = re.sub(r'\s+', ' ', text).strip()
-
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=overlap,
-        length_function=len,
-        separators=["\n\n", "\n", " ", ""]
-    )
-
-    chunks = text_splitter.split_text(cleaned_text)
-    return chunks
-
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap, length_function=len, separators=["\n\n", "\n", " ", ""])
+    return text_splitter.split_text(cleaned_text)
 
 def generate_embedding(text_content):
-    response = client_openai.embeddings.create(
-        input=text_content,
-        model="text-embedding-ada-002"
-    )
+    response = client_openai.embeddings.create(input=text_content, model="text-embedding-ada-002")
     return response.data[0].embedding
-
 
 def save_embedding_to_db(engine, filename, chunk_text, embedding_vector):
     vector_string = '[' + ','.join(map(str, embedding_vector)) + ']'
-
     insert_query_template = f"""
         INSERT INTO documents (filename, content, embedding, created_at) 
         VALUES (:filename, :content, '{vector_string}'::vector, now())
     """
     insert_query = sqlalchemy.text(insert_query_template)
-
     with engine.connect() as conn:
-        conn.execute(insert_query, {
-            "filename": filename,
-            "content": chunk_text,
-        })
-        conn.commit()
-
+        conn.execute(insert_query, {"filename": filename, "content": chunk_text}); conn.commit()
 
 def check_if_file_exists_in_db(filename):
     engine = init_db_engine()
     select_query = sqlalchemy.text("SELECT COUNT(*) FROM documents WHERE filename = :filename")
-
     try:
         with engine.connect() as conn:
             result = conn.execute(select_query, {"filename": filename}).scalar()
         return result > 0
     except Exception as e:
-        logging.error(f"Błąd podczas sprawdzania istnienia pliku w DB: {e}")
-        return False
+        logging.error(f"Błąd podczas sprawdzania istnienia pliku w DB: {e}"); return False
 
-
-# =======================================================
-# === LOGIKA AGENTÓW (PLACEHOLDERS) ===
-# =======================================================
-# UWAGA: Te klasy i funkcje muszą być zdefiniowane w oddzielnych plikach i importowane!
-# Tutaj używamy placeholderów dla funkcjonalności, aby kod był kompletny.
-
-class ExternalResearchAgent:
-    def analyze_matrix_for_scenario(self, home_country_name, home_context, scenario, foreign_countries, subjects):
-        return {"impact": "high", "details": f"Analysis based on {foreign_countries}"}
-
-
-class PredictiveImpactAgent:
-    def predict_for_scenario(self, home_context, scenario, external_results):
-        return {"12_months": "Risk increasing.", "36_months": "Strategic pivot needed."}
-
-
-class SummaryReportAgent:
-    def build_global_report(self, home_context, scenarios_data):
-        return f"Global Report Summary: Processed {len(scenarios_data)} scenarios."
-
-
-class SummaryBriefAgent:
-    def build_brief_summary(self, final_report):
-        return f"Brief: {final_report[:50]}..."
-
-
-def safety_agent(user_prompt, scenarios):
-    return user_prompt, scenarios
-
-
-def scenario_agent_with_verificator(user_prompt, scenario, weight):
-    # Prosty mock do zwrócenia struktury
-    if "procesorów" in scenario:
-        return {"countries": ["USA", "Japonia"], "subjects": ["ICT", "embargo"]}
-    else:
-        return {"countries": ["Niemcy", "Francja"], "subjects": ["motoryzacja", "handel"]}
-
-
-# =======================================================
-# === GŁÓWNA PĘTLA ANALITYCZNA I WORKERZY ===
-# =======================================================
 
 def run_engine(scenarios_raw, textfiles):
     external_agent = ExternalResearchAgent()
@@ -261,11 +209,21 @@ def run_engine(scenarios_raw, textfiles):
             "predictions": predictions,
         })
 
+    # ZAPIS SUROWYCH DANYCH
+    with open("external_results.json", "w", encoding="utf-8") as f:
+        json.dump(all_external_results_per_scenario, f, ensure_ascii=False, indent=2)
+
+    # RAPORT ZBIORCZY
     final_report = summary_agent.build_global_report(
         home_context=user_prompt,
         scenarios_data=all_external_results_per_scenario,
     )
+
+
+    # KRÓTKIE STRESZCZENIE (250–300 słów)
     brief_summary = brief_agent.build_brief_summary(final_report)
+    with open("raport_atlantis.md", "w", encoding="utf-8") as f:
+        f.write(final_report)
 
     return {
         "status": "completed",
@@ -284,7 +242,6 @@ def embed_chunks_to_db_worker(file_id, original_filename, text_content):
     logging.info(f"Start przetwarzania embeddingu dla pliku: {original_filename}")
 
     try:
-        # ZAPIS TREŚCI TEKSTOWEJ DO GCS (Mock, ponieważ architektura GCS została usunięta z tego bloku)
         if GCS_BUCKET_NAME:
             logging.warning("Pomięto zapis do GCS - brakuje implementacji GCS w tym bloku kodu.")
 
@@ -329,9 +286,6 @@ def set_to_done(research_id, result=None):
             job['result'] = result
 
 
-# =======================================================
-# === ENDPOINTY FLASK ===
-# =======================================================
 
 @app.route('/', methods=['GET'])
 def index():

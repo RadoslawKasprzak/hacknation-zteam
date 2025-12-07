@@ -11,13 +11,7 @@ from scenario_agent_with_verificator import scenario_agent_with_verificator
 
 
 class PredictiveImpactAgent:
-    """
-    Agent predykcyjny:
-    - bierze: kontekst Atlantis, scenariusz, analizy z external agenta,
-    - zwraca prognozy na 12 i 36 miesięcy,
-    - w dwóch wariantach: pozytywnym i negatywnym,
-    - wyłącznie dla państwa Atlantis.
-    """
+
 
     def __init__(self):
         self.llm = ChatOpenAI(
@@ -117,4 +111,3 @@ class PredictiveImpactAgent:
             return None
 
         return parsed
-
