@@ -148,7 +148,7 @@ class ExternalResearchAgent:
             search_depth=search_depth,
         )
 
-        # ✅ PROMPT Z WYMUSZENIEM LICZB
+        # PROMPT Z WYMUSZENIEM LICZB
         self.research_prompt = ChatPromptTemplate.from_messages([
             (
                 "system",
@@ -172,16 +172,14 @@ class ExternalResearchAgent:
                 "- co najmniej 4 zdania mają dotyczyć wpływu na życie mieszkańców Atlantis,\n"
                 "- maksymalnie 1 zdanie może opisywać sam kraj {foreign_country},\n"
                 "- wskaż 1–2 największe zagrożenia lub szanse,\n"
-                "- ✅ jeśli w danych występują JAKIEKOLWIEK LICZBY (kwoty, %, MW, eksport, import), "
+                "- jeśli w danych występują JAKIEKOLWIEK LICZBY (kwoty, %, MW, eksport, import), "
                 "MUSISZ przytoczyć co najmniej 1–2 takie liczby,\n"
-                "- ✅ NIE WOLNO wymyślać liczb,\n"
-                "- ✅ jeśli w źródłach NIE MA LICZB, musisz jasno napisać: "
+                "- NIE WOLNO wymyślać liczb,\n"
+                "- jeśli w źródłach NIE MA LICZB, musisz jasno napisać: "
                 "„w dostępnych źródłach nie podano konkretnych danych liczbowych”,\n"
                 "- pisz po polsku, prostym językiem."
             ),
         ])
-
-    # ===================== ANALIZA JEDNEGO KRAJU =====================
 
     def analyze_impact(
         self,
@@ -197,7 +195,7 @@ class ExternalResearchAgent:
             f"lata 2024-2025, gospodarka, bezpieczeństwo, handel, polityka"
         )
 
-        # --- Tavily ---
+        # Tavily
         try:
             search_results = self.search_tool.invoke({"query": query})
         except Exception as e:
@@ -210,7 +208,7 @@ class ExternalResearchAgent:
         except Exception:
             print(search_results)
 
-        # --- GPT ---
+        # GPT
         messages = self.research_prompt.format_messages(
             home_country_name=home_country_name,
             home_context=home_context,
@@ -226,8 +224,6 @@ class ExternalResearchAgent:
         except Exception as e:
             print(f"❌ LLM error: {e}")
             return "Nie udało się wygenerować analizy."
-
-    # ===================== ANALIZA WSZYSTKICH KRAJÓW =====================
 
     def analyze_matrix_for_scenario(
         self,
@@ -266,6 +262,142 @@ class ExternalResearchAgent:
                 print(summary)
 
         return results
+
+
+# ===================== KLASA: SUMMARY REPORT AGENT (RAPORT ZBIORCZY) =====================
+
+class SummaryReportAgent:
+    """
+    Agent, który:
+    - bierze listę scenariuszy z predykcjami,
+    - łączy wszystko w jeden raport,
+    - dzieli na: 12m/36m oraz pozytywny/negatywny,
+    - pisze po polsku, w formacie Markdown.
+    """
+
+    def __init__(self):
+        self.llm = ChatOpenAI(
+            model="gpt-4.1",
+            api_key=lambda: config2.OPENAI_API_KEY,
+            temperature=0.3,
+            max_tokens=2000,
+        )
+
+        self.prompt = ChatPromptTemplate.from_messages([
+            (
+                "system",
+                "Jesteś głównym analitykiem strategicznym państwa Atlantis. "
+                "Masz z wielu agentów cząstkowe PREDYKCJE, każda dla innego scenariusza. "
+                "Twoim zadaniem jest napisać JEDEN zbiorczy raport dla rządu Atlantis. "
+                "Raport ma być po polsku, klarowny, zrozumiały dla decydentów."
+            ),
+            (
+                "user",
+                "Kontekst państwa Atlantis:\n{home_context}\n\n"
+                "Dane wejściowe (lista scenariuszy z predykcjami):\n{scenarios_json}\n\n"
+                "Zadanie:\n"
+                "Na bazie powyższych danych przygotuj raport końcowy w formacie MARKDOWN.\n"
+                "Struktura raportu:\n\n"
+                "# Raport strategiczny dla państwa Atlantis\n"
+                "## Horyzont 12 miesięcy\n"
+                "### Scenariusze – ujęcie pozytywne\n"
+                "- podsumuj, jakie pozytywne ścieżki 12-miesięczne pojawiają się w różnych scenariuszach,\n"
+                "- wskaż wspólne elementy (np. gdzie scenariusze są zgodne),\n"
+                "- wskaż 2–3 kluczowe szanse.\n\n"
+                "### Scenariusze – ujęcie negatywne\n"
+                "- podsumuj główne zagrożenia w horyzoncie 12 miesięcy,\n"
+                "- wskaż obszary największego ryzyka (gospodarka, bezpieczeństwo, społeczeństwo, pozycja międzynarodowa),\n"
+                "- wskaż 2–3 najważniejsze punkty, które rząd powinien monitorować.\n\n"
+                "## Horyzont 36 miesięcy\n"
+                "### Scenariusze – ujęcie pozytywne\n"
+                "- podsumuj długoterminowe szanse w różnych scenariuszach,\n"
+                "- wskaż, jakie inwestycje/opcje strategiczne są powtarzalne w wielu scenariuszach.\n\n"
+                "### Scenariusze – ujęcie negatywne\n"
+                "- opisz możliwe długoterminowe ryzyka, jeśli rzeczy pójdą źle,\n"
+                "- podkreśl, jakie konsekwencje mogą być trwałe i trudne do odwrócenia.\n\n"
+                "## Rekomendacje dla rządu Atlantis\n"
+                "- wypisz 5–7 konkretnych rekomendacji (krótkie, w formie listy punktowanej),\n"
+                "- każda rekomendacja ma być maksymalnie 1–2 zdania,\n"
+                "- rekomendacje mają wynikać z tego, co widzisz w predykcjach.\n\n"
+                "WAŻNE:\n"
+                "- Odnoś się do scenariuszy ogólnie (np. \"w części scenariuszy zakłada się...\", \"w scenariuszach z silnym kryzysem...\"),\n"
+                "- NIE cytuj całych predykcji, tylko je streszczaj,\n"
+                "- NIE dodawaj żadnych nagłówków poza wskazanymi powyżej,\n"
+                "- Pisz w sposób zrozumiały, ale merytoryczny.\n"
+            ),
+        ])
+
+    def build_global_report(self, home_context: str, scenarios_data: list[dict]) -> str:
+
+        compact = []
+        for item in scenarios_data:
+            compact.append({
+                "scenario": item.get("scenario"),
+                "weight": item.get("weight"),
+                "predictions": item.get("predictions"),
+            })
+
+        scenarios_json = json.dumps(compact, ensure_ascii=False, indent=2)
+
+        messages = self.prompt.format_messages(
+            home_context=home_context,
+            scenarios_json=scenarios_json,
+        )
+
+        try:
+            response = self.llm.invoke(messages)
+            return response.content
+        except Exception as e:
+            print("❌ Błąd LLM (raport zbiorczy):", e)
+            return "# Raport strategiczny dla państwa Atlantis\n\nNie udało się wygenerować raportu."
+
+
+# ===================== KLASA: SUMMARY BRIEF AGENT (KRÓTKIE STRESZCZENIE) =====================
+
+class SummaryBriefAgent:
+    """
+    Agent, który robi krótkie streszczenie (250–300 słów)
+    na podstawie pełnego raportu tekstowego.
+    """
+
+    def __init__(self):
+        self.llm = ChatOpenAI(
+            model="gpt-4.1",
+            api_key=lambda: config2.OPENAI_API_KEY,
+            temperature=0.3,
+            max_tokens=600,
+        )
+
+        self.prompt = ChatPromptTemplate.from_messages([
+            (
+                "system",
+                "Jesteś ekspertem od syntetyzowania informacji dla decydentów. "
+                "Twoim zadaniem jest przygotować zwięzłe streszczenie raportu strategicznego, "
+                "tak aby ktoś zajęty miał ogólny obraz sytuacji i kierunkowe wnioski."
+            ),
+            (
+                "user",
+                "Pełny raport (Markdown):\n{full_report}\n\n"
+                "Zadanie:\n"
+                "- przygotuj streszczenie o długości ok. 250–300 słów po polsku,\n"
+                "- ma być JEDEN spójny tekst (bez nagłówków),\n"
+                "- najpierw ogólny obraz sytuacji Atlantis,\n"
+                "- potem kluczowe zagrożenia i szanse,\n"
+                "- na końcu 2–3 zdania o tym, co rząd powinien zrobić w pierwszej kolejności,\n"
+                "- styl: prosty, zrozumiały, ale merytoryczny,\n"
+                "- NIE cytuj całych fragmentów raportu, tylko parafrazuj.\n"
+            ),
+        ])
+
+    def build_brief_summary(self, full_report: str) -> str:
+        messages = self.prompt.format_messages(full_report=full_report)
+
+        try:
+            response = self.llm.invoke(messages)
+            return response.content
+        except Exception as e:
+            print("❌ Błąd LLM (krótkie streszczenie):", e)
+            return "Nie udało się wygenerować krótkiego streszczenia raportu."
 
 
 # ===================== DANE Z FRONTU =====================
@@ -328,8 +460,10 @@ if __name__ == "__main__":
 
     external_agent = ExternalResearchAgent()
     predictive_agent = PredictiveImpactAgent()
-    all_external_results_per_scenario = []
+    summary_agent = SummaryReportAgent()
+    brief_agent = SummaryBriefAgent()
 
+    all_external_results_per_scenario = []
     HOME_COUNTRY_NAME = "Atlantis"
 
     for scenario, weight in scenarios:
@@ -343,8 +477,8 @@ if __name__ == "__main__":
         resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
 
         if isinstance(resp, dict) and "countries" in resp and "subjects" in resp:
-            countries = resp["countries"]      # ✅ wszystkie kraje
-            subjects = resp["subjects"]        # ✅ wszystkie tematy
+            countries = resp["countries"]      # wszystkie kraje
+            subjects = resp["subjects"]        # wszystkie tematy
         else:
             print("❌ BŁĘDNA STRUKTURA:", resp)
             continue
@@ -383,8 +517,25 @@ if __name__ == "__main__":
             "predictions": predictions,
         })
 
-    # ✅ ZAPIS DO PLIKU
+    # ZAPIS SUROWYCH DANYCH
     with open("external_results.json", "w", encoding="utf-8") as f:
         json.dump(all_external_results_per_scenario, f, ensure_ascii=False, indent=2)
 
+    # RAPORT ZBIORCZY
+    final_report = summary_agent.build_global_report(
+        home_context=user_prompt,
+        scenarios_data=all_external_results_per_scenario,
+    )
+
+    with open("raport_atlantis.md", "w", encoding="utf-8") as f:
+        f.write(final_report)
+
+    # KRÓTKIE STRESZCZENIE (250–300 słów)
+    brief_summary = brief_agent.build_brief_summary(final_report)
+
+    with open("raport_atlantis_short.md", "w", encoding="utf-8") as f:
+        f.write(brief_summary)
+
     print("\n✅ GOTOWE – wszystkie analizy zapisane do external_results.json")
+    print("✅ Raport zbiorczy zapisany do: raport_atlantis.md")
+    print("✅ Krótkie streszczenie zapisane do: raport_atlantis_short.md")
