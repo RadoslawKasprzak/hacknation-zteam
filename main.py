@@ -10,7 +10,8 @@ from safety_agent import safety_agent
 from scenario_agent_with_verificator import scenario_agent_with_verificator
 
 
-# ===================== KLASA: EXTERNAL RESEARCH AGENT =====================
+# ===================== KLASA: PREDICTIVE IMPACT AGENT =====================
+
 class PredictiveImpactAgent:
     """
     Agent predykcyjny:
@@ -119,6 +120,9 @@ class PredictiveImpactAgent:
 
         return parsed
 
+
+# ===================== KLASA: EXTERNAL RESEARCH AGENT =====================
+
 class ExternalResearchAgent:
     """
     Agent do zewnętrznego researchu:
@@ -203,7 +207,7 @@ class ExternalResearchAgent:
         print(f"\n=== [DEBUG] TAVILY: {foreign_country} | {subject} ===")
         try:
             print(json.dumps(search_results, indent=2, ensure_ascii=False))
-        except:
+        except Exception:
             print(search_results)
 
         # --- GPT ---
@@ -223,7 +227,7 @@ class ExternalResearchAgent:
             print(f"❌ LLM error: {e}")
             return "Nie udało się wygenerować analizy."
 
-    # ===================== ANALIZA WSZYSTKICH KRAJÓW (Z PAUZĄ ENTER) =====================
+    # ===================== ANALIZA WSZYSTKICH KRAJÓW =====================
 
     def analyze_matrix_for_scenario(
         self,
@@ -241,7 +245,6 @@ class ExternalResearchAgent:
 
             print("\n" + "=" * 100)
             print(f"🌍 ANALIZA DLA KRAJU: {country}")
-            print("⏳ Po zakończeniu naciśnij ENTER, aby przejść dalej")
             print("=" * 100)
 
             for subject in subjects:
@@ -262,14 +265,10 @@ class ExternalResearchAgent:
                 print("\n--- ANALIZA (~6 zdań, z liczbami jeśli są) ---")
                 print(summary)
 
-            # ✅ PAUZA
-            input(f"\n✅ Zakończono analizę dla kraju {country}. Naciśnij ENTER, aby kontynuować...")
-
         return results
 
 
 # ===================== DANE Z FRONTU =====================
-
 
 user_prompt, scenarios = ("""
 Nazwa państwa: Atlantis
@@ -322,12 +321,13 @@ dług publiczny w okolicach średniej unijnej
   "rynek europejski zalewają tanie samochody elektryczne z Azji Wschodniej; europejski przemysł "
   "motoryzacyjny będzie miał w roku 2025 zyski na poziomie 30% średnich rocznych zysków z lat 2020-2024", 15)])
 
+
 # ===================== GŁÓWNA PĘTLA =====================
 
 if __name__ == "__main__":
 
     external_agent = ExternalResearchAgent()
-    predictive_agent = PredictiveImpactAgent()  # 👈 NOWOŚĆ
+    predictive_agent = PredictiveImpactAgent()
     all_external_results_per_scenario = []
 
     HOME_COUNTRY_NAME = "Atlantis"
@@ -343,8 +343,8 @@ if __name__ == "__main__":
         resp = scenario_agent_with_verificator(user_prompt, scenario, weight)
 
         if isinstance(resp, dict) and "countries" in resp and "subjects" in resp:
-            countries = resp["countries"][:1]  # ✅ tylko pierwsze państwo
-            subjects = resp["subjects"][:1]
+            countries = resp["countries"]      # ✅ wszystkie kraje
+            subjects = resp["subjects"]        # ✅ wszystkie tematy
         else:
             print("❌ BŁĘDNA STRUKTURA:", resp)
             continue
@@ -363,6 +363,8 @@ if __name__ == "__main__":
             foreign_countries=countries,
             subjects=subjects,
         )
+
+        # Predykcja 12 / 36 miesięcy
         predictions = predictive_agent.predict_for_scenario(
             home_context=sanitized_user_prompt,
             scenario=sanitized_scenario,
@@ -378,7 +380,7 @@ if __name__ == "__main__":
             "countries": countries,
             "subjects": subjects,
             "external_results": external_results,
-            "predictions": predictions,  # 👈 NOWOŚĆ
+            "predictions": predictions,
         })
 
     # ✅ ZAPIS DO PLIKU
