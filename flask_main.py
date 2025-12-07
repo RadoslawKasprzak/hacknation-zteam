@@ -6,6 +6,8 @@ import time
 
 from flask import Flask, request, jsonify
 
+from main import run_engine
+
 app = Flask(__name__)
 
 research_queue = {}
@@ -23,7 +25,7 @@ def get_status():
     job = research_queue.get(research_id)
     if not job:
         return jsonify({'error': 'Research id not found'}), 404
-    return jsonify({'research_id': research_id, 'status': job.get('status')}), 200
+    return jsonify({'research_id': research_id, 'status': job.get('status'), 'result': job['result']}), 200
 
 
 @app.route('/research', methods=['POST'])
@@ -32,8 +34,6 @@ def start_research():
     data = request.get_json(force=True, silent=True)
     if not data:
         return jsonify({'error': 'Missing or invalid JSON body'}), 400
-
-    user_prompt = data.get('user_prompt')
 
     scenarios = data.get('scenarios')
 
@@ -52,11 +52,12 @@ def start_research():
     research_id = uuid.uuid4().hex
     job = {
         'id': research_id,
-        'status': 'queued'
+        'status': 'queued',
+        'result': ''
     }
     research_queue[research_id] = job
 
-    pass_research_request(research_id, user_prompt, scenarios, textfiles)
+    pass_research_request(research_id, scenarios, textfiles)
     # Return created id
     return jsonify({'research_id': research_id, 'status': 'queued'}), 202
 
@@ -97,14 +98,14 @@ def upload_file():
 
 
 
-def pass_research_request(research_id, user_prompt, scenarios, textfiles):
+def pass_research_request(research_id, scenarios, textfiles):
     # run long task in pass_research_request_to_engine
     # when the long task is done run: lambda res: set_to_done(research_id)
     def worker():
         # mark job as running
         research_queue[research_id]['status'] = 'running'
         try:
-            res = pass_research_request_to_engine(user_prompt, scenarios, textfiles)
+            res = pass_research_request_to_engine(scenarios, textfiles)
             # callback once done
             set_to_done(research_id, res)
         except Exception as e:
@@ -116,12 +117,9 @@ def pass_research_request(research_id, user_prompt, scenarios, textfiles):
 
 
 
-def pass_research_request_to_engine(user_prompt, scenarios, textfiles):
-    # long task
-    # simulate work
-    time.sleep(10)
-    # simple result aggregation
-    return { }
+def pass_research_request_to_engine(scenarios, textfiles):
+    eng_resp = run_engine(scenarios)
+    return eng_resp
 
 
 

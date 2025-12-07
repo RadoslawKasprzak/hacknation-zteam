@@ -12,10 +12,8 @@ POST http://localhost:5000/research
 Content-Type: application/json
 
 {
-  "user_prompt": "test prompt",
   "scenarios": [{"weight":  10, "text":  "scenario text"}],
   "context_files": ["1af2b32ebca64b24976e7256cffb9bd5"]
-
 }
 
 resp:
