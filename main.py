@@ -19,7 +19,7 @@ class PredictiveImpactAgent:
             model="gpt-4.1",
             api_key=lambda: config2.OPENAI_API_KEY,
             temperature=0.3,
-            max_tokens=900,
+            max_tokens=2000,
         )
 
         self.prompt = ChatPromptTemplate.from_messages([

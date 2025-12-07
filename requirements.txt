@@ -15,3 +15,4 @@ langchain-community
 langchain-google-genai
 langchain-text-splitters
 requests
+markdown_pdf

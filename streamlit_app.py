@@ -207,7 +207,11 @@ def check_research_status(research_id):
             status_placeholder.empty()
             return
 
-        status_placeholder.info(f"Status: {status} | Czas pracy: {int(time.time() - start_time)}s")
+        if status == 'done':
+            status_placeholder.link_button("Gotowe, pobierz raport", url=FLASK_API_URL+"/download_report")
+        else:
+            status_placeholder.info(f"Status: {status}")
+
         time.sleep(5)
 
     st.warning("⚠️ Przekroczono czas oczekiwania na zakończenie analizy.")

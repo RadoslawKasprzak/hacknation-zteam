@@ -7,10 +7,11 @@ import time
 import re
 from typing import Dict, List
 import datetime
+from markdown_pdf import MarkdownPdf, Section
 
 # --- BIBLIOTEKI INFRASTRUKTURALNE ---
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 from openai import OpenAI
 from google.cloud import storage
 from google.cloud.sql.connector import Connector, IPTypes
@@ -219,11 +220,17 @@ def run_engine(scenarios_raw, textfiles):
         scenarios_data=all_external_results_per_scenario,
     )
 
-
     # KRÓTKIE STRESZCZENIE (250–300 słów)
     brief_summary = brief_agent.build_brief_summary(final_report)
+
     with open("raport_atlantis.md", "w", encoding="utf-8") as f:
         f.write(final_report)
+
+
+    pdf = MarkdownPdf()
+    pdf.meta["title"] = 'Raport Atlantis'
+    pdf.add_section(Section(final_report, toc=False))
+    pdf.save('raport_atlantis.pdf')
 
     return {
         "status": "completed",
@@ -296,6 +303,9 @@ def index():
         logging.error(f"Błąd renderowania szablonu: {e}")
         return "Witaj! (Błąd ładowania UI. Sprawdź, czy 'templates/index.html' istnieje)", 500
 
+@app.route("/download_report", methods=['GET'])
+def get_report():
+    return send_file("raport_atlantis.pdf", mimetype="application/pdf")
 
 @app.route('/status', methods=['GET'])
 def get_status():
@@ -315,7 +325,8 @@ def get_status():
         'research_id': research_id,
         'status': job.get('status'),
         'progress': job.get('progress', 'N/A'),
-        'result': brief_summary_display
+        'result': brief_summary_display,
+        'error': job.get('error')
     }), 200
 
 
