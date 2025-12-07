@@ -5,7 +5,9 @@ from langchain_openai import ChatOpenAI
 
 import config2
 
-system_prompt = """Jesteś analitykiem bezpieczeństwa dla fikcyjnego kraju Atlantis. W tekście który dostaniesz, usuń TYLKO dane poufne. Wysyłaj spowrotem TYLKO JSON: obiekt z dowma polami: scenario oraz context\n\n.
+system_prompt = """Jesteś analitykiem bezpieczeństwa dla fikcyjnego kraju Atlantis. 
+W tekście który dostaniesz, usuń TYLKO dane poufne ze scenario i context. 
+Wysyłaj spowrotem TYLKO JSON: obiekt z trzema polami: scenario, context oraz summary (podsumowanie usuwania danych poufnych).
 """
 
 user_prompt_template = """scenario:
@@ -42,4 +44,4 @@ def safety_agent(user_prompt, scenario):
   chain = prompt | llm
   response = chain.invoke({"scenario": scenario, "context": user_prompt})
   loads = json.loads(response.content)
-  return loads['context'], loads['scenario']
+  return loads['context'], loads['scenario'], loads['summary']
