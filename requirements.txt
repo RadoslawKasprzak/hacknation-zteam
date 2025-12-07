@@ -1,5 +1,17 @@
+# Zaktualizowany requirements - pakiety używane w projekcie
+python-dotenv
+flask
+openai
+google-cloud-storage
+cloud-sql-python-connector
+SQLAlchemy
+pg8000
+pdfplumber
+numpy
+pypdf
 langchain-core
 langchain-openai
+langchain-community
 langchain-google-genai
-flask
-pdfplumber
+langchain-text-splitters
+requests
