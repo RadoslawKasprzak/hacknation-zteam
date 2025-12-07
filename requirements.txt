@@ -1,8 +1,4 @@
-langchain-core
-langchain-openai
-langchain-google-genai
-flask
-pdfplumber
+# Zaktualizowany requirements - pakiety używane w projekcie
 python-dotenv
 flask
 openai
@@ -19,4 +15,3 @@ langchain-community
 langchain-google-genai
 langchain-text-splitters
 requests
-markdown_pdf
