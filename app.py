@@ -6,7 +6,7 @@ import time
 import json
 import logging
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 # from main import run_engine
 from safety_agent import safety_agent
@@ -185,6 +185,12 @@ research_queue = {}
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@app.route('/', methods=['GET'])
+def index():
+    try:
+        return render_template('index.html')
+    except Exception:
+        return "Witaj! (Aplikacja zintegrowana)."
 
 @app.route('/status', methods=['GET'])
 def get_status():
@@ -302,4 +308,4 @@ def set_to_done(research_id, result=None):
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, host="0.0.0.0")

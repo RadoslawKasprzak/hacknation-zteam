@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlantis Research Agent UI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1); }
+        h1 { color: #1e88e5; text-align: center; margin-bottom: 25px; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
+        h2 { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; color: #333; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="text"], input[type="file"], textarea, button {
+            width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px;
+        }
+        button { background-color: #4caf50; color: white; cursor: pointer; border: none; transition: background-color 0.3s; }
+        button:hover:not(:disabled) { background-color: #45a049; }
+        button:disabled { background-color: #9e9e9e; cursor: not-allowed; }
+        .result-box { margin-top: 15px; padding: 15px; border-radius: 6px; background-color: #e3f2fd; border: 1px solid #90caf9; white-space: pre-wrap; font-size: 0.9em; }
+        #status-output { min-height: 100px; background-color: #fff; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; font-family: monospace; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+
+        /* Styl dla scenariuszy */
+        #scenarios-input { height: 150px; resize: vertical; }
+        .info-box { background-color: #fff3e0; border-left: 5px solid #ff9800; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Atlantis Research Agent - Panel Sterowania</h1>
+        <div class="info-box">
+            Państwo docelowe: **Atlantis** (kontekst zakodowany w pliku `main.py`).
+            Wszystkie operacje są asynchroniczne i używają kolejki zadań.
+        </div>
+
+        <div class="section">
+            <h2>1. Wgranie pliku kontekstowego (PDF/TXT)</h2>
+            <label for="context-file">Wybierz plik (PDF/TXT):</label>
+            <input type="file" id="context-file" accept=".pdf,.txt">
+            <button id="upload-btn" onclick="uploadFile()">Wgraj plik (POST /upload)</button>
+            <div id="upload-result" class="result-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Uruchomienie analizy scenariuszy</h2>
+
+            <label for="file-ids">Użyj ID Pliku Kontekstowego (oddzielone przecinkami, np. a1b2c3):</label>
+            <input type="text" id="file-ids" placeholder="Wklej ID pliku z sekcji 1 (opcjonalnie)">
+
+            <label for="scenarios-input">Definicja scenariuszy (format JSON):</label>
+            <textarea id="scenarios-input">
+[
+    ["Katastrofa globalnego producenta procesorów. Odbudowa do 2028.", 30],
+    ["Spadek zysków w motoryzacji w Europie przez zalew tanich E-samochodów z Azji.", 15]
+]</textarea>
+
+            <button id="research-btn" onclick="startResearch()">Start Analizy (POST /research)</button>
+            <div id="research-result" class="result-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Status i Wyniki</h2>
+            <label for="research-id-status">ID zadania badawczego (Research ID):</label>
+            <input type="text" id="research-id-status" placeholder="Wklej Research ID z sekcji 2">
+            <button id="status-btn" onclick="checkStatus()">Sprawdź Status (GET /status)</button>
+
+            <div id="status-output" class="result-box">
+                Oczekiwanie na ID zadania...
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Ustawienia API
+        const API_URL = 'http://localhost:8080'; // Zmień na URL Cloud Run, jeśli wdrażasz
+
+        // Funkcja pomocnicza do wyświetlania wyników
+        function displayResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            const statusClass = isError ? 'error' : 'success';
+
+            element.innerHTML = `<span class="${statusClass}">Status: ${data.status || 'Błąd'}</span>\n\n${JSON.stringify(data, null, 2)}`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        // --- 1. UPLOAD FILE ---
+        async function uploadFile() {
+            const fileInput = document.getElementById('context-file');
+            const resultDiv = document.getElementById('upload-result');
+            const uploadBtn = document.getElementById('upload-btn');
+
+            if (fileInput.files.length === 0) {
+                resultDiv.textContent = 'Proszę wybrać plik.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadBtn.disabled = true;
+            resultDiv.textContent = 'Wgrywanie i przetwarzanie...';
+
+            try {
+                const response = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.file_id) {
+                    displayResult('upload-result', data, false);
+                    document.getElementById('file-ids').value = data.file_id; // Automatycznie wypełnij pole ID
+                } else {
+                    displayResult('upload-result', data, true);
+                }
+            } catch (error) {
+                displayResult('upload-result', { status: 'Błąd sieci/serwera', error: error.message }, true);
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // --- 2. START RESEARCH ---
+        async function startResearch() {
+            const fileIds = document.getElementById('file-ids').value.split(',').map(id => id.trim()).filter(id => id);
+            const scenariosJson = document.getElementById('scenarios-input').value;
+            const researchDiv = document.getElementById('research-result');
+            const researchBtn = document.getElementById('research-btn');
+
+            let scenarios;
+            try {
+                scenarios = JSON.parse(scenariosJson);
+                if (!Array.isArray(scenarios) || scenarios.length === 0) {
+                     throw new Error("Scenariusze muszą być listą list.");
+                }
+            } catch (e) {
+                researchDiv.textContent = 'Błąd parsowania JSON scenariuszy: ' + e.message;
+                return;
+            }
+
+            researchBtn.disabled = true;
+            researchDiv.textContent = 'Uruchamianie agentów analitycznych...';
+
+            try {
+                const requestBody = {
+                    scenarios: scenarios,
+                    context_files: fileIds,
+                };
+
+                const response = await fetch(`${API_URL}/research`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.research_id) {
+                    displayResult('research-result', data, false);
+                    document.getElementById('research-id-status').value = data.research_id; // Automatycznie wypełnij status ID
+                } else {
+                    displayResult('research-result', data, true);
+                }
+            } catch (error) {
+                displayResult('research-result', { status: 'Błąd sieci/serwera', error: error.message }, true);
+            } finally {
+                researchBtn.disabled = false;
+            }
+        }
+
+        // --- 3. CHECK STATUS ---
+        async function checkStatus() {
+            const researchId = document.getElementById('research-id-status').value.trim();
+            const statusDiv = document.getElementById('status-output');
+            const statusBtn = document.getElementById('status-btn');
+
+            if (!researchId) {
+                statusDiv.textContent = 'Proszę wprowadzić ID zadania badawczego.';
+                return;
+            }
+
+            statusBtn.disabled = true;
+            statusDiv.textContent = `Sprawdzanie statusu dla ID: ${researchId}...`;
+
+            try {
+                const response = await fetch(`${API_URL}/status?research_id=${researchId}`, {
+                    method: 'GET',
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let output = `Research ID: ${data.research_id}\nStatus: ${data.status}\n\n`;
+                    if (data.status === 'done' && data.result && data.result.brief_summary) {
+                         // Wyświetl skrót, jeśli jest dostępny
+                         output += "--- KRÓTKIE STRESZCZENIE RAPORTU ---\n";
+                         output += data.result.brief_summary;
+                    } else if (data.status === 'error') {
+                         output += "--- BŁĄD ---\n";
+                         output += JSON.stringify(data.result, null, 2);
+                    } else if (data.status === 'done' && data.result) {
+                         output += "--- SUROWE WYNIKI (DONE) ---\n";
+                         output += JSON.stringify(data.result, null, 2);
+                    }
+
+                    statusDiv.textContent = output;
+                } else {
+                    statusDiv.textContent = `Błąd API: ${response.status} - ${data.error || 'Nieznany błąd.'}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `Błąd sieci/serwera: ${error.message}`;
+            } finally {
+                statusBtn.disabled = false;
+            }
+        }
+
+    </script>
+</body>
+</html>
