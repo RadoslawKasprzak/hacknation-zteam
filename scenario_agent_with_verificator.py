@@ -14,7 +14,7 @@ def scenario_agent_with_verificator(user_prompt, scenario, weight):
         max_tokens=8000
     )
 
-    # Prompt
+    # Przygotowanie prostego promptu: stałe role system i user
     prompt = ChatPromptTemplate.from_messages([
         ("system",
          "Jesteś analitykiem w biurze Ministerstwa Spraw Zagranicznych, "
@@ -27,6 +27,7 @@ def scenario_agent_with_verificator(user_prompt, scenario, weight):
         ("user", "Kontekst kraju:\n{kontekst}\n\nOpis sytuacyjny:\n{opis_sytuacyjny}")
     ])
 
+    # Połączenie promptu z modelem i wywołanie
     chain = prompt | llm
 
     try:
