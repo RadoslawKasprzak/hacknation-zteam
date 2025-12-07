@@ -23,7 +23,6 @@ context:
 api_key = config2.OPENAI_API_KEY
 model_name = "gpt-4.1"
 
-# ✅ STABILNA KONFIGURACJA LLM
 llm = ChatOpenAI(
     model=model_name,
     api_key=lambda: api_key,
@@ -33,13 +32,11 @@ llm = ChatOpenAI(
 
 
 def load_json(path):
-    """Wczytuje plik JSON z dysku"""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def safety_agent(user_prompt, scenario):
-    """Usuwa dane poufne z treści przy użyciu AI"""
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
@@ -54,18 +51,14 @@ def safety_agent(user_prompt, scenario):
             "context": user_prompt
         })
 
-        # ✅ DEBUG - surowa odpowiedź modelu
         print("✅ SUROWA ODPOWIEDŹ LLM:")
         print(response.content)
 
-        # ✅ PRÓBA PARSOWANIA JSON
         loads = json.loads(response.content)
 
-        # ✅ WALIDACJA KLUCZY
         if "context" not in loads or "scenario" not in loads:
             raise ValueError("Brakuje kluczy 'context' lub 'scenario' w odpowiedzi JSON")
 
-        # ✅ ZWRACANY BEZPIECZNY TEKST
         print("✅ OCZYSZCZONY CONTEXT:")
         print(loads["context"])
 
@@ -75,11 +68,11 @@ def safety_agent(user_prompt, scenario):
         return loads["context"], loads["scenario"]
 
     except json.JSONDecodeError:
-        print("❌ BŁĄD: Model nie zwrócił poprawnego JSON-a!")
+        print("BŁĄD: Model nie zwrócił poprawnego JSON-a!")
         print(response.content)
         return None, None
 
     except Exception as e:
-        print("❌ BŁĄD KRYTYCZNY:")
+        print("BŁĄD KRYTYCZNY:")
         print(e)
         return None, None
