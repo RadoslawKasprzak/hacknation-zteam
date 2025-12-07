@@ -1,5 +1,8 @@
+from dis import specialized
+
 from safety_agent import safety_agent
 from scenario_agent_with_verificator import scenario_agent_with_verificator
+from specialized_search import specialized_agents
 
 #dane z frontu
 user_prompt, scenarios = ("""
@@ -64,8 +67,10 @@ for s in scenarios:
   countries, subjects = (resp['countries'], resp['subjects'])
 
   # PLLUM agent \/
-  sanitized_user_prompt, sanitized_scenario = safety_agent(user_prompt, scenario)
+  sanitized_user_prompt = safety_agent(user_prompt, scenario)
 
+  # SPECIALIZED AGENTS
+  specialized_agents(sanitized_user_prompt)
 
   external_results = []
   # External Agents \/
